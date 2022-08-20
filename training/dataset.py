@@ -13,6 +13,7 @@ import PIL.Image
 import json
 import torch
 import dnnlib
+import cv2
 
 try:
     import pyspng
@@ -216,6 +217,15 @@ class ImageFolderDataset(Dataset):
                 image = np.array(PIL.Image.open(f))
         if image.ndim == 2:
             image = image[:, :, np.newaxis] # HW => HWC
+
+        H, W = image.shape[:2]
+        center = [H/2, W/2]
+        x = center[1] - 1280/2
+        y = center[0] - 720/2
+        image = image[int(y):int(y+720), int(x):int(x+720)]
+
+        image = cv2.resize(image, (128, 128), interpolation=cv2.INTER_AREA)
+
         image = image.transpose(2, 0, 1) # HWC => CHW
         return image
 
