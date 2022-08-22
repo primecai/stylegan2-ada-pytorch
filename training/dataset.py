@@ -84,14 +84,14 @@ class Dataset(torch.utils.data.Dataset):
         return self._raw_idx.size
 
     def __getitem__(self, idx):
-        image = self._load_raw_image(self._raw_idx[idx])
+        image, fname = self._load_raw_image(self._raw_idx[idx])
         assert isinstance(image, np.ndarray)
         assert list(image.shape) == self.image_shape
         assert image.dtype == np.uint8
         if self._xflip[idx]:
             assert image.ndim == 3 # CHW
             image = image[:, :, ::-1]
-        return image.copy(), self.get_label(idx)
+        return image.copy(), self.get_label(idx), fname
 
     def get_label(self, idx):
         label = self._get_raw_labels()[self._raw_idx[idx]]
@@ -176,7 +176,7 @@ class ImageFolderDataset(Dataset):
             raise IOError('No image files found in the specified path')
 
         name = os.path.splitext(os.path.basename(self._path))[0]
-        raw_shape = [len(self._image_fnames)] + list(self._load_raw_image(0).shape)
+        raw_shape = [len(self._image_fnames)] + list(self._load_raw_image(0)[0].shape)
         if resolution is not None and (raw_shape[2] != resolution or raw_shape[3] != resolution):
             raise IOError('Image files do not match the specified resolution')
         super().__init__(name=name, raw_shape=raw_shape, **super_kwargs)
@@ -219,15 +219,16 @@ class ImageFolderDataset(Dataset):
             image = image[:, :, np.newaxis] # HW => HWC
 
         H, W = image.shape[:2]
+        center_crop_size = min(H, W)
         center = [H/2, W/2]
-        x = center[1] - 1280/2
-        y = center[0] - 720/2
-        image = image[int(y):int(y+720), int(x):int(x+720)]
+        x = center[1] - center_crop_size/2
+        y = center[0] - center_crop_size/2
+        image = image[int(y):int(y+center_crop_size), int(x):int(x+center_crop_size)]
 
         image = cv2.resize(image, (128, 128), interpolation=cv2.INTER_AREA)
 
         image = image.transpose(2, 0, 1) # HWC => CHW
-        return image
+        return image, fname
 
     def _load_raw_labels(self):
         fname = 'dataset.json'
