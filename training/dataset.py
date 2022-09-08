@@ -225,7 +225,7 @@ class ImageFolderDataset(Dataset):
         y = center[0] - center_crop_size/2
         image = image[int(y):int(y+center_crop_size), int(x):int(x+center_crop_size)]
 
-        image = cv2.resize(image, (128, 128), interpolation=cv2.INTER_AREA)
+        image = cv2.resize(image, (512, 512), interpolation=cv2.INTER_AREA)
 
         image = image.transpose(2, 0, 1) # HWC => CHW
         return image, fname
