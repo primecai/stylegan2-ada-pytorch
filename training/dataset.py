@@ -171,7 +171,9 @@ class ImageFolderDataset(Dataset):
             raise IOError('Path must point to a directory or zip')
 
         PIL.Image.init()
-        self._image_fnames = sorted(fname for fname in self._all_fnames if self._file_ext(fname) in PIL.Image.EXTENSION)
+        # self._image_fnames = sorted(fname for fname in self._all_fnames if self._file_ext(fname) in PIL.Image.EXTENSION)
+        # print(self._all_fnames[0][])
+        self._image_fnames = sorted(fname for fname in self._all_fnames if fname[-8:] == "_rgb.png")
         if len(self._image_fnames) == 0:
             raise IOError('No image files found in the specified path')
 
@@ -210,25 +212,39 @@ class ImageFolderDataset(Dataset):
 
     def _load_raw_image(self, raw_idx):
         fname = self._image_fnames[raw_idx]
+        dname = self._image_fnames[raw_idx].replace("rgb.png", "d.png")
         with self._open_file(fname) as f:
             if pyspng is not None and self._file_ext(fname) == '.png':
                 image = pyspng.load(f.read())
             else:
                 image = np.array(PIL.Image.open(f))
+        with self._open_file(dname) as f:
+            if pyspng is not None and self._file_ext(dname) == '.png':
+                depth = pyspng.load(f.read())
+            else:
+                depth = np.array(PIL.Image.open(f))
+
         if image.ndim == 2:
             image = image[:, :, np.newaxis] # HW => HWC
+        if depth.ndim == 2:
+            depth = depth[:, :, np.newaxis] # HW => HWC
 
-        H, W = image.shape[:2]
-        center_crop_size = min(H, W)
-        center = [H/2, W/2]
-        x = center[1] - center_crop_size/2
-        y = center[0] - center_crop_size/2
-        image = image[int(y):int(y+center_crop_size), int(x):int(x+center_crop_size)]
+        # H, W = image.shape[:2]
+        # center_crop_size = min(H, W)
+        # center = [H/2, W/2]
+        # x = center[1] - center_crop_size/2
+        # y = center[0] - center_crop_size/2
+        # image = image[int(y):int(y+center_crop_size), int(x):int(x+center_crop_size)]
 
-        image = cv2.resize(image, (512, 512), interpolation=cv2.INTER_AREA)
+        # image = cv2.resize(image, (128, 128), interpolation=cv2.INTER_AREA)
 
         image = image.transpose(2, 0, 1) # HWC => CHW
-        return image, fname
+        depth = depth.transpose(2, 0, 1) # HWC => CHW
+        depth = depth[0, ...][np.newaxis, :, :]
+        # print(depth.shape)
+
+        rgbd = np.concatenate((image, depth), axis=0)
+        return rgbd, fname
 
     def _load_raw_labels(self):
         fname = 'dataset.json'

@@ -215,6 +215,7 @@ def compute_feature_stats_for_dataset(opts, detector_url, detector_kwargs, rel_l
     for images, _labels, _ in torch.utils.data.DataLoader(dataset=dataset, sampler=item_subset, batch_size=batch_size, **data_loader_kwargs):
         if images.shape[1] == 1:
             images = images.repeat([1, 3, 1, 1])
+        images = images[:, :3, :, :]
         features = detector(images.to(opts.device), **detector_kwargs)
         stats.append_torch(features, num_gpus=opts.num_gpus, rank=opts.rank)
         progress.update(stats.num_items)
@@ -265,6 +266,7 @@ def compute_feature_stats_for_generator(opts, detector_url, detector_kwargs, rel
             c = torch.from_numpy(np.stack(c)).pin_memory().to(opts.device)
             images.append(run_generator(z, c))
         images = torch.cat(images)
+        images = images[:, :3, :, :]
         if images.shape[1] == 1:
             images = images.repeat([1, 3, 1, 1])
         features = detector(images, **detector_kwargs)
